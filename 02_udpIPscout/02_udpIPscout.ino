@@ -4,7 +4,7 @@
 
 //made-up MAC address
 byte mac[] = {
-  0x00, 0xAA, 0xBB, 0xCD, 0xDE, 0x02
+  0x00, 0xAA, 0xBB, 0xCD, 0xDE, 0x01
 };
 
 //if DHCP fails:
@@ -22,7 +22,7 @@ char  ReplyBuffer[] = "acknowledged";
 
 EthernetUDP Udp;
 
-char broadcastBeacon[UDP_TX_PACKET_MAX_SIZE] = "ard_midi_bcn";
+char broadcastBeacon[] = "ard_midi_bcn";
 
 
 void setup() {
@@ -67,7 +67,7 @@ void loop() {
     
   int packetSize = Udp.parsePacket();
   Udp.read(packetBuffer, packetSize);
-  if (packetBuffer == broadcastBeacon) {
+  if (packetBuffer == broadcastBeacon) {    //<--- this is the problem, still no luck here
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
     Udp.write("gotcha!");
     Udp.endPacket();
@@ -95,7 +95,7 @@ void loop() {
     Serial.println(Udp.remotePort());
 
     // read the packet into packetBufffer
-    Udp.read(packetBuffer,UDP_TX_PACKET_MAX_SIZE);
+    //Udp.read(packetBuffer,UDP_TX_PACKET_MAX_SIZE);
     Serial.println("Contents:");
     Serial.println(packetBuffer);
 
