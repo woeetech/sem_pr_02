@@ -53,7 +53,16 @@ void setup() {
 }
 
 void loop() {
-  int packetSize = Udp.parsePacket();
+  
+  char reply[] = "hello everybody!";
+  IPAddress broadcast(192,168,2,255);
+  Udp.beginPacket(broadcast, 50000);
+  Udp.write(reply);
+  Udp.endPacket();
+
+  delay(3000);
+  
+  /*int packetSize = Udp.parsePacket();
   if(packetSize)
   {
     Serial.print("Received packet of size ");
@@ -81,6 +90,6 @@ void loop() {
     Udp.write(ReplyBuffer);
     Udp.endPacket();
   }
-  delay(10);
+  delay(10);*/
   Ethernet.maintain();
 }

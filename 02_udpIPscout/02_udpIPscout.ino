@@ -4,7 +4,7 @@
 
 //made-up MAC address
 byte mac[] = {
-  0x00, 0xAA, 0xBB, 0xCD, 0xDE, 0x01
+  0x00, 0xAA, 0xBB, 0xCD, 0xDE, 0x03
 };
 
 //if DHCP fails:
@@ -17,13 +17,33 @@ IPAddress broadcast(192,168,2,255);
 //ports around 50000 and beyond are kinda safe to use
 unsigned int localPort = 50000; 
 
-char packetBuffer[UDP_TX_PACKET_MAX_SIZE];
-char  ReplyBuffer[] = "acknowledged"; 
+byte packetBuffer[4];
+byte broadcastBeacon[] = {0xFF, 0x00, 0x00, 0x00};  //might change afterwards 
 
 EthernetUDP Udp;
 
-char broadcastBeacon[] = "ard_midi_bcn";
+struct device {     //might change afterwards
+  IPAddress ip;
+  
+  bool used = false;
 
+  String alias = "";
+};
+
+device devices[10];
+int devicesFound = 0;  
+
+void printDevices() {
+  Serial.print("Devices found: ");
+  Serial.println(devicesFound);
+  for (int i = 0; i < devicesFound; i++) {
+    Serial.print("Device number: " + String(i+1) + "\nDevice IP: " + printIP(devices[i].ip) + "\n\n");
+  }
+}
+
+String printIP(IPAddress ip) {
+  return String(ip[0], DEC) + "." +String(ip[1], DEC) + "." + String(ip[2], DEC) + "." + String(ip[3], DEC);
+}
 
 void setup() {
   Serial.begin(9600);
@@ -56,27 +76,41 @@ void setup() {
 
   //making visible
   Udp.beginPacket(broadcast, 50000);
-  Udp.write(broadcastBeacon);
+  Udp.write(broadcastBeacon, 4);
   Udp.endPacket();
 
-  Serial.print("Beacon sended ");
-  Serial.print(broadcastBeacon);
+  Serial.print("Beacon sent ");
+  for (int i = 0; i < sizeof(broadcastBeacon); i++) {
+    Serial.print(broadcastBeacon[i], HEX);
+    Serial.write(' ');
+  }
+  Serial.println();  
+
+  
 }
 
-void loop() {
-    
+void loop() { 
   int packetSize = Udp.parsePacket();
-  Udp.read(packetBuffer, packetSize);
-  if (packetBuffer == broadcastBeacon) {    //<--- this is the problem, still no luck here
-    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    Udp.write("gotcha!");
-    Udp.endPacket();
-
-    Serial.print("New Arduino found on: ");
-    Serial.println(Udp.remoteIP());
-    //optional saving of its IP maybe?
-    //array of IPs?
+  Udp.readByte(packetBuffer, 4);                          //my own function added in EthernetUDP.cpp - pretty much copy and paste, but with different type
+  
+  //printing table of devices//
+  if (Serial.read() == 'p') {
+    printDevices();
   }
+  //------------------------//
+
+  //broadcast beacon receieved--------------------//
+  if ((packetSize == 4) && (packetBuffer[0] == 0xFF)) {    //packetBuffer would never be equal to broadcastBeacon, no idea why...
+    Serial.print("Broadcast beacon from: ");
+    Serial.println(Udp.remoteIP());
+    if (devices[devicesFound].used != true) {             //kinda rubbish, i know, wont be used afterwards
+      devices[devicesFound].ip = Udp.remoteIP();
+      devices[devicesFound].alias = "Arduino1";
+      devices[devicesFound].used = true;
+      devicesFound++;
+    }    
+  }
+  //----------------------------------------------//
   else if (packetSize)
   {
     Serial.print("Received packet of size ");
@@ -93,17 +127,13 @@ void loop() {
     }
     Serial.print(", port ");
     Serial.println(Udp.remotePort());
-
-    // read the packet into packetBufffer
-    //Udp.read(packetBuffer,UDP_TX_PACKET_MAX_SIZE);
     Serial.println("Contents:");
-    Serial.println(packetBuffer);
-
-    // send a reply, to the IP address and port that sent us the packet we received
-    //Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    //Udp.write(ReplyBuffer);
-    //Udp.endPacket();
+    for (int i = 0; i < sizeof(packetBuffer); i++) {
+      Serial.print(packetBuffer[i], HEX);
+      Serial.write(' ');
+    } 
   }
   delay(10);
   Ethernet.maintain();
 }
+
